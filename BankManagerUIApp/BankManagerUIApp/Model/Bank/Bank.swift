@@ -13,12 +13,14 @@ struct Bank {
     private let loanQueue = OperationQueue()
     private let totalCustomerCount: Int = 0
     private var totalTaskTime: CFAbsoluteTime = 0
+    private var lastPublishedNumberTicket = 1
     
     mutating func appendTenCustomers() {
-        (1...10).forEach {
+        (lastPublishedNumberTicket..<(lastPublishedNumberTicket + 10)).forEach {
             customers.enqueue(Customer(numberTicket: $0))
         }
 
+        lastPublishedNumberTicket += 10
         start()
     }
     
@@ -27,7 +29,6 @@ struct Bank {
         totalTaskTime = measureTime {
             distributeCustomers()
         }
-        announceResult()
     }
     
     private func assignClerk() {
@@ -45,7 +46,6 @@ struct Bank {
     
     private mutating func distributeCustomers() {
         while let customer = customers.dequeue() {
-            
             NotificationCenter.default.post(name: NSNotification.Name("view"), object: self, userInfo: ["customer" : customer])
             
             switch customer.task {
@@ -55,23 +55,14 @@ struct Bank {
                 loanQueue.addOperation(work(customer: customer))
             }
         }
-        
-//        depositQueue.waitUntilAllOperationsAreFinished()
-//        loanQueue.waitUntilAllOperationsAreFinished()
     }
     
     private func work(customer: Customer) -> BlockOperation {
         return BlockOperation {
             NotificationCenter.default.post(name: NSNotification.Name("start"), object: self, userInfo: ["customer" : customer])
-            print("\(customer.numberTicket)번 고객 \(customer.task.information.title)업무 시작")
             Thread.sleep(forTimeInterval: customer.task.information.time)
-            print("\(customer.numberTicket)번 고객 \(customer.task.information.title)업무 완료")
-//            NotificationCenter.default.post(name: NSNotification.Name("end"), object: self, userInfo: ["customer" : customer])
+            NotificationCenter.default.post(name: NSNotification.Name("end"), object: self, userInfo: ["customer" : customer])
         }
-    }
-    
-    private func announceResult() {
-        print("업무가 마감되었습니다. 오늘 업무를 처리한 고객은 총 \(totalCustomerCount)명이며, 총 업무시간은 \(String(format: "%.2f", totalTaskTime))초 입니다.")
     }
 }
 

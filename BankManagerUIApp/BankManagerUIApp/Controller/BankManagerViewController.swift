@@ -63,7 +63,6 @@ class BankManagerViewController: UIViewController {
     private let waitScrollView = {
         let scrollView = UIScrollView()
         scrollView.backgroundColor = .orange
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
         
         return scrollView
     }()
@@ -71,6 +70,8 @@ class BankManagerViewController: UIViewController {
     private let waitContentStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.alignment = .center
         stackView.backgroundColor = .red
         
         return stackView
@@ -97,7 +98,6 @@ class BankManagerViewController: UIViewController {
     private let workScrollView = {
         let scrollView = UIScrollView()
         scrollView.backgroundColor = .purple
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
         
         return scrollView
     }()
@@ -105,6 +105,9 @@ class BankManagerViewController: UIViewController {
     private let workContentStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.alignment = .center
+        stackView.backgroundColor = .red
         
         return stackView
     }()
@@ -137,9 +140,12 @@ class BankManagerViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        NotificationCenter.default.addObserver(self, selector: #selector(addCustomerView(_:)), name: NSNotification.Name("view"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(addWaitingQueue(_:)), name: NSNotification.Name("view"), object: nil)
         NotificationCenter.default.addObserver(forName: NSNotification.Name("start"), object: nil, queue: .main) { notification in
-            self.changeQueue(notification as NSNotification)
+            self.passWaitingQueueToWorkingQueue(notification as NSNotification)
+        }
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("end"), object: nil, queue: .main) { notification in
+            self.removeWorkQueue(notification as NSNotification)
         }
         
         view.backgroundColor = .systemBackground
@@ -173,47 +179,59 @@ class BankManagerViewController: UIViewController {
             totalStackView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
         
-//        NSLayoutConstraint.activate([
-//            waitContentStackView.topAnchor.constraint(equalTo: waitScrollView.contentLayoutGuide.topAnchor),
-//            waitContentStackView.leadingAnchor.constraint(equalTo: waitScrollView.contentLayoutGuide.leadingAnchor),
-//            waitContentStackView.trailingAnchor.constraint(equalTo: waitScrollView.contentLayoutGuide.trailingAnchor),
-//            waitContentStackView.bottomAnchor.constraint(equalTo: waitScrollView.contentLayoutGuide.bottomAnchor),
-//            waitContentStackView.widthAnchor.constraint(equalTo: waitScrollView.frameLayoutGuide.widthAnchor)
-//        ])
-//
-//        NSLayoutConstraint.activate([
-//            workContentStackView.topAnchor.constraint(equalTo: workScrollView.contentLayoutGuide.topAnchor),
-//            workContentStackView.leadingAnchor.constraint(equalTo: workScrollView.contentLayoutGuide.leadingAnchor),
-//            workContentStackView.trailingAnchor.constraint(equalTo: workScrollView.contentLayoutGuide.trailingAnchor),
-//            workContentStackView.bottomAnchor.constraint(equalTo: workScrollView.contentLayoutGuide.bottomAnchor)
-//        ])
+        NSLayoutConstraint.activate([
+            waitContentStackView.topAnchor.constraint(equalTo: waitScrollView.contentLayoutGuide.topAnchor),
+            waitContentStackView.leadingAnchor.constraint(equalTo: waitScrollView.contentLayoutGuide.leadingAnchor),
+            waitContentStackView.trailingAnchor.constraint(equalTo: waitScrollView.contentLayoutGuide.trailingAnchor),
+            waitContentStackView.bottomAnchor.constraint(equalTo: waitScrollView.contentLayoutGuide.bottomAnchor),
+            waitContentStackView.heightAnchor.constraint(equalTo: waitScrollView.contentLayoutGuide.heightAnchor),
+            waitContentStackView.widthAnchor.constraint(equalTo: waitScrollView.frameLayoutGuide.widthAnchor)
+        ])
+
+        NSLayoutConstraint.activate([
+            workContentStackView.topAnchor.constraint(equalTo: workScrollView.contentLayoutGuide.topAnchor),
+            workContentStackView.leadingAnchor.constraint(equalTo: workScrollView.contentLayoutGuide.leadingAnchor),
+            workContentStackView.trailingAnchor.constraint(equalTo: workScrollView.contentLayoutGuide.trailingAnchor),
+            workContentStackView.bottomAnchor.constraint(equalTo: workScrollView.contentLayoutGuide.bottomAnchor),
+            workContentStackView.heightAnchor.constraint(equalTo: workScrollView.contentLayoutGuide.heightAnchor),
+            workContentStackView.widthAnchor.constraint(equalTo: workScrollView.frameLayoutGuide.widthAnchor)
+        ])
     }
     
-    @objc private func addCustomerView(_ notification: NSNotification) {
+    @objc private func addWaitingQueue(_ notification: NSNotification) {
         let customer = notification.userInfo!["customer"] as! Customer
         print("\(customer.numberTicket) - \(customer.task.information.title)")
         
-//        let customerLabel = {
-//            let label = UILabel()
-//            label.text = "\(customer.numberTicket) - \(customer.task.information.title)"
-//            label.tag = customer.numberTicket
-//
-//            return label
-//        }()
+        let customerLabel = {
+            let label = UILabel()
+            label.text = "\(customer.numberTicket) - \(customer.task.information.title)"
+            label.tag = customer.numberTicket
+            
+            return label
+        }()
         
-//        waitContentStackView.addArrangedSubview(customerLabel)
+        waitContentStackView.addArrangedSubview(customerLabel)
     }
     
-    @objc private func changeQueue(_ notification: NSNotification) {
+    @objc private func passWaitingQueueToWorkingQueue(_ notification: NSNotification) {
         let customer = notification.userInfo!["customer"] as! Customer
-        print("remove: \(customer.numberTicket)")
         
-        waitContentStackView.subviews.forEach { UIView in
-            let label = UIView as! UILabel
-//            print("remove: \(label.tag)")
-            
-            if label.tag == customer.numberTicket {
-                waitContentStackView.removeArrangedSubview(UIView)
+        waitContentStackView.subviews.forEach { subview in
+            if subview.tag == customer.numberTicket {
+                waitContentStackView.removeArrangedSubview(subview)
+                subview.removeFromSuperview()
+                workContentStackView.addArrangedSubview(subview)
+            }
+        }
+    }
+    
+    @objc private func removeWorkingQueue(_ notification: NSNotification) {
+        let customer = notification.userInfo!["customer"] as! Customer
+        
+        workContentStackView.subviews.forEach { subview in
+            if subview.tag == customer.numberTicket {
+                workContentStackView.removeArrangedSubview(subview)
+                subview.removeFromSuperview()
             }
         }
     }
