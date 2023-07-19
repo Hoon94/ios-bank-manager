@@ -6,9 +6,10 @@
 
 import UIKit
 
-class BankManagerViewController: UIViewController {
+class BankManagerViewController: UIViewController, TimerDelegate {
     private var bank = Bank()
-    
+    private var timer: Timer?
+        
     private lazy var addButton = {
         let button = UIButton()
         button.setTitle("고객 10명 추가", for: .normal)
@@ -139,13 +140,17 @@ class BankManagerViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        bank.timerDelegate = self
         
-        NotificationCenter.default.addObserver(self, selector: #selector(addWaitingQueue(_:)), name: NSNotification.Name("view"), object: nil)
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("view"), object: nil, queue: .main) { notification in
+            self.addWaitingQueue(notification as NSNotification)
+        }
+        
         NotificationCenter.default.addObserver(forName: NSNotification.Name("start"), object: nil, queue: .main) { notification in
             self.passWaitingQueueToWorkingQueue(notification as NSNotification)
         }
         NotificationCenter.default.addObserver(forName: NSNotification.Name("end"), object: nil, queue: .main) { notification in
-            self.removeWorkQueue(notification as NSNotification)
+            self.removeWorkingQueue(notification as NSNotification)
         }
         
         view.backgroundColor = .systemBackground
@@ -196,6 +201,11 @@ class BankManagerViewController: UIViewController {
             workContentStackView.heightAnchor.constraint(equalTo: workScrollView.contentLayoutGuide.heightAnchor),
             workContentStackView.widthAnchor.constraint(equalTo: workScrollView.frameLayoutGuide.widthAnchor)
         ])
+    }
+    
+    func updateTimerUI(totalTaskTime: String) {
+        //TODO: UI update
+        print(totalTaskTime)
     }
     
     @objc private func addWaitingQueue(_ notification: NSNotification) {
