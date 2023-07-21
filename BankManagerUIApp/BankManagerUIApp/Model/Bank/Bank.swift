@@ -14,7 +14,7 @@ protocol TimerDelegate {
     func updateTimerUI(totalTaskTime: String)
 }
 
-class Bank {
+final class Bank {
     private var customers = Queue<Customer>()
     private let depositQueue = OperationQueue()
     private let loanQueue = OperationQueue()
