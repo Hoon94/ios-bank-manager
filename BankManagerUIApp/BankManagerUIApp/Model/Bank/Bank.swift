@@ -23,6 +23,7 @@ class Bank {
     private var totalTaskTime = 0.0
     private var lastPublishedNumberTicket = 1
     private var timer: RepeatingTimer
+    private let semaphore = DispatchSemaphore(value: 1)
     var timerDelegate: TimerDelegate?
     
     init() {
@@ -86,9 +87,13 @@ class Bank {
                 loanQueue.addOperation(work(customer: customer))
             }
         }
+        
         depositQueue.waitUntilAllOperationsAreFinished()
         loanQueue.waitUntilAllOperationsAreFinished()
+        
+        semaphore.wait()
         totalTaskTime = timer.suspend()
+        semaphore.signal()
     }
     
     private func work(customer: Customer) -> BlockOperation {
@@ -142,7 +147,6 @@ extension Bank {
         static let taskTime = 1.1
     }
 }
-
 
 class RepeatingTimer {
     let timeInterval: TimeInterval
