@@ -21,12 +21,13 @@ class BankManagerViewController: UIViewController, TimerDelegate {
         return button
     }()
     
-    private let resetButton = {
+    private lazy var resetButton = {
         let button = UIButton()
         button.setTitle("초기화", for: .normal)
         button.titleLabel?.font = .preferredFont(forTextStyle: .body)
         button.titleLabel?.adjustsFontForContentSizeCategory = true
         button.backgroundColor = .red
+        button.addAction(UIAction(handler: { _ in self.resetTask() }), for: .touchUpInside)
         
         return button
     }()
@@ -41,7 +42,7 @@ class BankManagerViewController: UIViewController, TimerDelegate {
     
     private let taskTimeLabel = {
         let label = UILabel()
-        label.text = "업무시간 - "
+        label.text = "업무시간 - 00:00:000"
         label.font = .preferredFont(forTextStyle: .title2)
         label.adjustsFontForContentSizeCategory = true
         label.textAlignment = .center
@@ -206,11 +207,24 @@ class BankManagerViewController: UIViewController, TimerDelegate {
     func updateTimerUI(totalTaskTime: String) {
         //TODO: UI update
         print(totalTaskTime)
+        taskTimeLabel.text = "업무시간 - \(totalTaskTime)"
+    }
+    
+    func resetTask() {
+        waitContentStackView.subviews.forEach { subview in
+            subview.removeFromSuperview()
+        }
+        
+        workContentStackView.subviews.forEach { subview in
+            subview.removeFromSuperview()
+        }
+        
+        bank.resetBank()
     }
     
     @objc private func addWaitingQueue(_ notification: NSNotification) {
         let customer = notification.userInfo!["customer"] as! Customer
-        print("\(customer.numberTicket) - \(customer.task.information.title)")
+//        print("\(customer.numberTicket) - \(customer.task.information.title)")
         
         let customerLabel = {
             let label = UILabel()

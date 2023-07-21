@@ -18,8 +18,17 @@ class Bank {
     private let loanQueue = OperationQueue()
     private let totalCustomerCount = 0
     private var startTime = Date()
+    private var totalTaskTime = 0.0
     private var lastPublishedNumberTicket = 1
+    private var timer: RepeatingTimer
     var timerDelegate: TimerDelegate?
+    
+    init() {
+        timer = RepeatingTimer(timeInterval: 0.001)
+        timer.eventHandler = {
+            self.updateTotalTaskTime()
+        }
+    }
     
     func appendTenCustomers() {
         (lastPublishedNumberTicket..<(lastPublishedNumberTicket + 10)).forEach {
@@ -30,8 +39,16 @@ class Bank {
         start()
     }
     
+    func resetBank() {
+        depositQueue.cancelAllOperations()
+        loanQueue.cancelAllOperations()
+        totalTaskTime = timer.stop()
+        timerDelegate?.updateTimerUI(totalTaskTime: "00:00:000")
+    }
+    
     func start() {
         assignClerk()
+        startTime = timer.resume()
         DispatchQueue.global().async {
             self.distributeCustomers()
         }
@@ -39,7 +56,7 @@ class Bank {
     
     @objc func updateTotalTaskTime() {
         let currentTime = Date()
-        let elapsedTime = currentTime.timeIntervalSince(startTime)
+        let elapsedTime = currentTime.timeIntervalSince(startTime) + totalTaskTime
         
         let minutes = Int(elapsedTime / 60)
         let seconds = Int(elapsedTime) % 60
@@ -67,6 +84,7 @@ class Bank {
         }
         depositQueue.waitUntilAllOperationsAreFinished()
         loanQueue.waitUntilAllOperationsAreFinished()
+        totalTaskTime = timer.suspend()
     }
     
     private func work(customer: Customer) -> BlockOperation {
@@ -82,5 +100,79 @@ class Bank {
 extension OperationQueue {
     func assignBankClerkCount(_ count: Int) {
         self.maxConcurrentOperationCount = count
+    }
+}
+
+class RepeatingTimer {
+    let timeInterval: TimeInterval
+    var totalTaskTime: TimeInterval = 0
+    var startTime: Date = Date()
+    
+    init(timeInterval: TimeInterval) {
+        self.timeInterval = timeInterval
+    }
+    
+    private lazy var timer: DispatchSourceTimer = {
+        let t = DispatchSource.makeTimerSource(queue: .main)
+        t.schedule(deadline: .now() + self.timeInterval, repeating: self.timeInterval)
+        t.setEventHandler(handler: { [weak self] in
+            self?.eventHandler?()
+        })
+        return t
+    }()
+
+    var eventHandler: (() -> Void)?
+
+    private enum State {
+        case suspended
+        case resumed
+    }
+
+    private var state: State = .suspended
+
+    deinit {
+        print("timer reset")
+        timer.setEventHandler {}
+        timer.cancel()
+        let _ = resume()
+        eventHandler = nil
+    }
+    
+    func resume() -> Date {
+        if state == .resumed {
+            return startTime
+        }
+        startTime = Date()
+        state = .resumed
+        timer.resume()
+        
+        return startTime
+    }
+
+    func suspend() -> TimeInterval {
+        let currentTime = Date()
+        
+        if state == .suspended {
+            return totalTaskTime
+        }
+        
+        state = .suspended
+        timer.suspend()
+        totalTaskTime += currentTime.timeIntervalSince(startTime)
+        
+        return totalTaskTime
+    }
+    
+    func stop() -> TimeInterval {
+        totalTaskTime = 0
+        
+        if state == .suspended {
+            return totalTaskTime
+        }
+        
+        state = .suspended
+        timer.suspend()
+        
+        return totalTaskTime
     }
 }
