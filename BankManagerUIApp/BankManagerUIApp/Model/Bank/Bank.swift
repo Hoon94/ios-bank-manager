@@ -7,8 +7,10 @@
 
 import Foundation
 
-@objc
 protocol TimerDelegate {
+    func addWaitingQueue(customer: Customer)
+    func moveToWorkingQueue(customer: Customer)
+    func removeWorkingQueue(customer: Customer)
     func updateTimerUI(totalTaskTime: String)
 }
 
@@ -24,7 +26,7 @@ class Bank {
     var timerDelegate: TimerDelegate?
     
     init() {
-        timer = RepeatingTimer(timeInterval: 0.001)
+        timer = RepeatingTimer(timeInterval: 0.1)
         timer.eventHandler = {
             self.updateTotalTaskTime()
         }
@@ -43,6 +45,7 @@ class Bank {
         depositQueue.cancelAllOperations()
         loanQueue.cancelAllOperations()
         totalTaskTime = timer.stop()
+        lastPublishedNumberTicket = 1
         timerDelegate?.updateTimerUI(totalTaskTime: "00:00:000")
     }
     
@@ -73,7 +76,8 @@ class Bank {
     
     private func distributeCustomers() {
         while let customer = customers.dequeue() {
-            NotificationCenter.default.post(name: NSNotification.Name("view"), object: self, userInfo: ["customer" : customer])
+            
+            self.timerDelegate?.addWaitingQueue(customer: customer)
             
             switch customer.task {
             case .deposit:
@@ -89,9 +93,9 @@ class Bank {
     
     private func work(customer: Customer) -> BlockOperation {
         return BlockOperation {
-            NotificationCenter.default.post(name: NSNotification.Name("start"), object: self, userInfo: ["customer" : customer])
+            self.timerDelegate?.moveToWorkingQueue(customer: customer)
             Thread.sleep(forTimeInterval: customer.task.information.time)
-            NotificationCenter.default.post(name: NSNotification.Name("end"), object: self, userInfo: ["customer" : customer])
+            self.timerDelegate?.removeWorkingQueue(customer: customer)
         }
     }
 }
@@ -102,6 +106,43 @@ extension OperationQueue {
         self.maxConcurrentOperationCount = count
     }
 }
+
+//MARK: - Task Extension
+extension Bank {
+    enum Task {
+        case loan
+        case deposit
+        
+        static var random: Self {
+            return Int.random(in: 1...2) % 2 == 1 ? .loan : .deposit
+        }
+        
+        var information: (title: String, time: Double) {
+            switch self {
+            case .loan:
+                return (title: "대출", time: 1.1)
+            case .deposit:
+                return (title: "예금", time: 0.7)
+            }
+        }
+    }
+}
+
+//MARK: - Namespace Extension
+extension Bank {
+    enum Deposit {
+        static let clerkCount = 2
+        static let title = "예금"
+        static let taskTime = 0.7
+    }
+    
+    enum Load {
+        static let clerkCount = 1
+        static let title = "대출"
+        static let taskTime = 1.1
+    }
+}
+
 
 class RepeatingTimer {
     let timeInterval: TimeInterval
@@ -129,14 +170,6 @@ class RepeatingTimer {
     }
 
     private var state: State = .suspended
-
-    deinit {
-        print("timer reset")
-        timer.setEventHandler {}
-        timer.cancel()
-        let _ = resume()
-        eventHandler = nil
-    }
     
     func resume() -> Date {
         if state == .resumed {

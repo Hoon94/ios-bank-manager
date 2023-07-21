@@ -141,18 +141,7 @@ class BankManagerViewController: UIViewController, TimerDelegate {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        bank.timerDelegate = self
-        
-        NotificationCenter.default.addObserver(forName: NSNotification.Name("view"), object: nil, queue: .main) { notification in
-            self.addWaitingQueue(notification as NSNotification)
-        }
-        
-        NotificationCenter.default.addObserver(forName: NSNotification.Name("start"), object: nil, queue: .main) { notification in
-            self.passWaitingQueueToWorkingQueue(notification as NSNotification)
-        }
-        NotificationCenter.default.addObserver(forName: NSNotification.Name("end"), object: nil, queue: .main) { notification in
-            self.removeWorkingQueue(notification as NSNotification)
-        }
+        bank.timerDelegate = self        
         
         view.backgroundColor = .systemBackground
         
@@ -204,9 +193,7 @@ class BankManagerViewController: UIViewController, TimerDelegate {
         ])
     }
     
-    func updateTimerUI(totalTaskTime: String) {
-        //TODO: UI update
-        print(totalTaskTime)
+    func updateTimerUI(totalTaskTime: String) {        
         taskTimeLabel.text = "업무시간 - \(totalTaskTime)"
     }
     
@@ -222,40 +209,39 @@ class BankManagerViewController: UIViewController, TimerDelegate {
         bank.resetBank()
     }
     
-    @objc private func addWaitingQueue(_ notification: NSNotification) {
-        let customer = notification.userInfo!["customer"] as! Customer
-//        print("\(customer.numberTicket) - \(customer.task.information.title)")
-        
-        let customerLabel = {
-            let label = UILabel()
-            label.text = "\(customer.numberTicket) - \(customer.task.information.title)"
-            label.tag = customer.numberTicket
+    func addWaitingQueue(customer: Customer) {
+        DispatchQueue.main.async {
+            let customerLabel = {
+                let label = UILabel()
+                label.text = "\(customer.numberTicket) - \(customer.task.information.title)"
+                label.tag = customer.numberTicket
+                
+                return label
+            }()
             
-            return label
-        }()
-        
-        waitContentStackView.addArrangedSubview(customerLabel)
+            self.waitContentStackView.addArrangedSubview(customerLabel)
+        }
     }
     
-    @objc private func passWaitingQueueToWorkingQueue(_ notification: NSNotification) {
-        let customer = notification.userInfo!["customer"] as! Customer
-        
-        waitContentStackView.subviews.forEach { subview in
-            if subview.tag == customer.numberTicket {
-                waitContentStackView.removeArrangedSubview(subview)
-                subview.removeFromSuperview()
-                workContentStackView.addArrangedSubview(subview)
+    func moveToWorkingQueue(customer: Customer) {
+        DispatchQueue.main.async {
+            self.waitContentStackView.subviews.forEach { subview in
+                if subview.tag == customer.numberTicket {
+                    self.waitContentStackView.removeArrangedSubview(subview)
+                    subview.removeFromSuperview()
+                    self.workContentStackView.addArrangedSubview(subview)
+                }
             }
         }
     }
     
-    @objc private func removeWorkingQueue(_ notification: NSNotification) {
-        let customer = notification.userInfo!["customer"] as! Customer
-        
-        workContentStackView.subviews.forEach { subview in
-            if subview.tag == customer.numberTicket {
-                workContentStackView.removeArrangedSubview(subview)
-                subview.removeFromSuperview()
+    func removeWorkingQueue(customer: Customer) {
+        DispatchQueue.main.async {
+            self.workContentStackView.subviews.forEach { subview in
+                if subview.tag == customer.numberTicket {
+                    self.workContentStackView.removeArrangedSubview(subview)
+                    subview.removeFromSuperview()
+                }
             }
         }
     }
