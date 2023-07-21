@@ -30,8 +30,8 @@ struct Bank {
     }
     
     private func assignClerk() {
-        depositQueue.assignBankClerkCount(2)
-        loanQueue.assignBankClerkCount(1)
+        depositQueue.assignBankClerkCount(ClerkCount.deposit)
+        loanQueue.assignBankClerkCount(ClerkCount.loan)
     }
     
     private func measureTime(perform: () -> Void) -> CFAbsoluteTime {
@@ -69,8 +69,47 @@ struct Bank {
     }
 }
 
+//MARK: - Bank Task Extension
+extension Bank {
+    enum Task {
+        case loan
+        case deposit
+        
+        static var random: Self {
+            return Int.random(in: 1...2) % 2 == 1 ? .loan : .deposit
+        }
+        
+        var information: (title: String, time: Double) {
+            switch self {
+            case .deposit:
+                return (TaskTitle.deposit, TaskTime.deposit)
+            case .loan:
+                return (TaskTitle.loan, TaskTime.loan)
+            }
+        }
+    }
+}
+
+//MARK: - Namespace Extension
+private extension Bank {
+    enum ClerkCount {
+        static let deposit = 2
+        static let loan = 1
+    }
+    
+    enum TaskTitle {
+        static let deposit = "예금"
+        static let loan = "대출"
+    }
+    
+    enum TaskTime {
+        static let deposit = 0.7
+        static let loan = 1.1
+    }
+}
+
 //MARK: - OperationQueue Extension
-extension OperationQueue {
+private extension OperationQueue  {
     func assignBankClerkCount(_ count: Int) {
         self.maxConcurrentOperationCount = count
     }
