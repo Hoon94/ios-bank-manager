@@ -74,9 +74,9 @@ minsup, hoon 팀이 만든 은행창구 매니저 콘솔 및 UI앱입니다. 업
 
 
 ### 📐 Diagram
-<p align="center">
-<img width="500" src="https://hackmd.io/_uploads/rkeCWUCY3.jpg">
-</p>
+
+<img width="700" src="https://github.com/Hoon94/ios-bank-manager/assets/79740398/7b99780e-0939-4944-bfd0-5408d780f828">
+
 
 
 ## 💻 실행 화면 
